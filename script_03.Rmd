@@ -1,6 +1,6 @@
 ---
 title: "Week 3"
-author: "David Kane"
+author: "Akila Muthukumar"
 output: html_document
 ---
 
@@ -39,17 +39,45 @@ sep_old <-
   rename(id = course_id,
          title = course_title,
          name = course_name,
-         department = course_department) %>% 
+         department = course_department) %>%
+  group_by(id, title, name, department) %>%
+  summarize(u_grad = sum(u_grad), .groups = "drop") %>%
   filter(u_grad > 10)
 
+sep_old
+
 # But this is not correct! Look for Gov 50: Data. What do you see? What can you
-# do to clean it up?
+# do to clean it up? Since there were multiple rows for each class, we had to 
+# group by the class criteria and then summarize by the total undergraduate 
+# count
 ```
 
 
 ### Scene 1
 
 **Prompt:** Read in and clean the new data, creating an object called `sep_new`. 
+
+```{r}
+
+sep_new <- 
+  read_excel("new_data/class_enrollment_summary_by_term_9-22-2020.xlsx", 
+             skip = 3) %>% 
+  clean_names() %>% 
+  filter(! is.na(course_title)) %>% 
+  select(-grad, -non_degree, -x_reg, -vus, -employee, 
+         -withdraw, -total, -instructor_full_name, -course_section_code) %>%
+  rename(id = course_id,
+         title = course_title,
+         name = course_name,
+         department = course_department,
+         u_grad_new = u_grad) %>%
+  group_by(id, title, name, department) %>%
+  summarize(u_grad_new = sum(u_grad_new), .groups = "drop") %>%
+  filter(u_grad_new > 10)
+
+sep_new
+
+```
 
 
 
@@ -60,17 +88,43 @@ sep_old <-
 
 Before we start on the model, Wisdom suggests we should:
 
-
-
+```{r}
+# We need to determine what actual data is necessary to compare so we remove
+# things outside the scope / duplicates. We need both the data sets to have the
+# same qualifying filters (ie undergrads) to make comparisons between them.
+```
 
 After we have a model, Temperance suggests we should:
 
+```{r}
+# Eliminating small classes might create error since we are filtering for 10
+# people and a class with >10 people might not be included after a drop
+# deadline.
+# Uncertainty since we don't know if people left because they took a leave or just changed classes. 
+# internal and external validity -- predicting past does not mean you can predict the future b/c overfitting
 
+```
 
 ### Scene 3
 
 **Prompt:** Which classes had the biggest increases and decreases in undergraduate enrollments between September 1 and today? Make a graphic that shows the 5 biggest increases and decreases. Make it look nice.
 
+```{r}
+
+sep <- inner_join(sep_old, sep_new, by = c("id", "title", "name", "department")) %>%
+  mutate(difference = u_grad_new - u_grad) %>%
+  arrange(desc(difference)) %>%
+  slice(1:5, 412:416) %>%
+  ggplot(aes(x = title, y = difference, fill = department)) +
+  geom_col() +
+  labs(y = "Difference in Enrollment", 
+       x = "Course", 
+       title = "Change in Undergrad Enrollment since Sept 1st") +
+  scale_fill_discrete(name = "Department")
+
+sep
+
+```
 
 
 
